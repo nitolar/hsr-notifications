@@ -12,7 +12,7 @@ Also automatically collects your daily check-in!
 
 ## Preview
 
-soon
+[hsr not.webm](https://github.com/nitolar/hsr-notifications/assets/73779998/78a21d43-35b0-40cf-a727-c35293b2c50f)
 
 ## How to use
 
