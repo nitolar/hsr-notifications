@@ -1,4 +1,4 @@
-# Genshin Notifications
+# HSR Notifications
 [![Last Commit](https://img.shields.io/github/last-commit/nitolar/hsr-notifications)](https://github.com/nitolar/hsr-notifications/commits/master)
 [![Repo size](https://img.shields.io/github/repo-size/nitolar/hsr-notifications)](https://github.com/nitolar/hsr-notifications/graphs/code-frequency)
 [![LICENSE](https://img.shields.io/github/license/nitolar/hsr-notifications)](https://github.com/nitolar/hsr-notifications/blob/master/LICENSE.md)
