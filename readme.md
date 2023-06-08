@@ -10,9 +10,11 @@ Also automatically collects your daily check-in!
 
 [Check out Genshin Impact version](https://github.com/nitolar/genshin-notifications)
 
+
 ## Preview
 
-[hsr not.webm](https://github.com/nitolar/hsr-notifications/assets/73779998/78a21d43-35b0-40cf-a727-c35293b2c50f)
+[hsr not.webm](https://github.com/nitolar/hsr-notifications/assets/73779998/e0f21b2a-4e52-47c5-a9b5-5a51f27496a6)
+
 
 ## How to use
 
