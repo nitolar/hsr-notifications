@@ -49,6 +49,14 @@ python notifications.py
 
 ## Changelog
 
+### 22.09.2024
+
+**After this update you must reinstall requirements.txt! Or install psutil using: pip install psutil**
+- Added Shop, Forgotten Hall, Pure Fiction and Apocalyptic Shadow reset notification
+- Added reminders when you turn on Honkai: Star Rail
+- Added 180, 200, 220 Trailblaiz Power to `trailblaze_milestones`
+- Added errors when incorrect values are set for `set_cookies_method` (not set to `auto` or `login`), `ltuid` (set to deafult 0), `ltoken` (empty), `server` (not set to one of those `eu`, `us`, `as`)
+
 ### 08.06.2023
 
 - First release
