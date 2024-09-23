@@ -299,10 +299,10 @@ async def reminder():
                 if os.getenv("reminder_hall") == "True":
                     if hall_reset:
                         print(f"REMINDER {strftime('%H:%M:%S', localtime())} | Forgotten Hall has been reset")
-                    if os.getenv('tts') == 'True':
-                        engine.say("REMINDER Forgotten Hall has been reset")
-                        engine.runAndWait()
-                    await to_thread(toaster.show_toast, "Forgotten Hall reset", f"Forgotten Hall has been reset", "ico/Hall.ico", 5)
+                        if os.getenv('tts') == 'True':
+                            engine.say("REMINDER Forgotten Hall has been reset")
+                            engine.runAndWait()
+                        await to_thread(toaster.show_toast, "Forgotten Hall reset", f"Forgotten Hall has been reset", "ico/Hall.ico", 5)
 
                 if os.getenv("reminder_pf") == "True":
                     if pf_reset:

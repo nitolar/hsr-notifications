@@ -49,6 +49,10 @@ python notifications.py
 
 ## Changelog
 
+### 24.09.2024
+
+- Fixed Forgotten Hall reset reminder being sent even though it wasn't
+
 ### 22.09.2024
 
 **After this update you must reinstall requirements.txt! Or install psutil using: pip install psutil**
