@@ -1,10 +1,11 @@
 import dotenv, os, pyttsx3, pytz, datetime, genshin, asyncio, json, contextvars, functools, psutil
-from win10toast import ToastNotifier
+from win11toast import toast_async
 from time import localtime, strftime
 
-dotenv.load_dotenv(dotenv_path="settings.env")
+HSRn_path = os.path.dirname(os.path.realpath(__file__))
+toast_async = functools.partial(toast_async, app_id="HSR Notifications", on_click=lambda args: None, on_dismissed=lambda args: None, on_failed=lambda args: None)
+dotenv.load_dotenv(dotenv_path=f"{HSRn_path}/settings.env")
 hsr = genshin.Client()
-toaster = ToastNotifier()
 engine = pyttsx3.init()
 os.system("") # To make colors in errors always work
 
@@ -35,6 +36,12 @@ if os.getenv("server") not in ["eu", "us", "as"]:
     print("\33[31mIncorrect value for \"server\"! \n\33[93mSet it to on of this values: \"eu\", \"us\", \"as\"\033[0m")
     exit()
 
+def margin(input, margin, milestone):
+    return any(int(x) <= input <= int(x) + margin for x in milestone)
+
+def closest(input, milestone):
+    return min(milestone, key=lambda x: abs(int(x) - input))
+
 async def to_thread(func, /, *args, **kwargs):
     loop = asyncio.get_running_loop()
     ctx = contextvars.copy_context()
@@ -44,6 +51,11 @@ async def to_thread(func, /, *args, **kwargs):
 async def trailblaze():
     trailblaze_notification_send = False
     trailblaze_last_count = -1
+    trailblaze_milestone_stop_notifications_until = -1
+    icon = {
+        'src': f'file://{HSRn_path}/ico/Trailblaze.ico',
+        'placement': 'appLogoOverride'
+    }
     while(True):
         ac = await hsr.get_game_accounts()
         for account in ac:
@@ -54,18 +66,24 @@ async def trailblaze():
         if trailblaze_notification_send == True:
             if trailblaze_last_count != notes.current_stamina:
                 trailblaze_notification_send = False
+                if (os.getenv('trailblaze_milestone')) == 'True':
+                    if notes.current_stamina <= trailblaze_milestone_stop_notifications_until:
+                        trailblaze_notification_send = True
+                    else:
+                        trailblaze_milestone_stop_notifications_until = -1
 
         if (os.getenv('trailblaze_milestone')) == 'True':
             trailblaze_milestones = os.getenv('trailblaze_milestones').split(', ')
-            if notes.current_stamina in trailblaze_milestones:
+            if margin(notes.current_stamina, int(os.getenv("trailblaze_milestones_margin")), trailblaze_milestones):
                 if trailblaze_notification_send == False:
                     print(f"{strftime('%H:%M:%S', localtime())} | One of your Trailblaze Power milestone was reached")
                     if os.getenv('tts') == 'True':
                         engine.say("One of your Trailblaze Power milestone was reached")
                         engine.runAndWait()
                     trailblaze_last_count = notes.current_stamina
-                    await to_thread(toaster.show_toast, "One of your Trailblaze Power milestone was reached", f"You currently have {notes.current_stamina} Trailblaze Power out of {notes.max_stamina}", "ico/Trailblaze.ico", 15)
+                    await toast_async("One of your Trailblaze Power milestone was reached", f"You currently have {notes.current_stamina} Trailblaze Power out of {notes.max_stamina}", icon=icon)
                     trailblaze_notification_send = True
+                    trailblaze_milestone_stop_notifications_until = int(closest(notes.current_stamina, trailblaze_milestones)) + int(os.getenv("trailblaze_milestones_margin"))
             else:
                 if trailblaze_notification_send == False:
                     if notes.current_stamina == notes.max_stamina:
@@ -74,7 +92,7 @@ async def trailblaze():
                             engine.say("Your Trailblaze Power is FULL")
                             engine.runAndWait()
                         trailblaze_last_count = notes.current_stamina
-                        await to_thread(toaster.show_toast, "Your Trailblaze Power is FULL", f"You currently have {notes.current_stamina} Trailblaze Power out of {notes.max_stamina}", "ico/Trailblaze.ico", 15)
+                        await toast_async("Your Trailblaze Power is FULL", f"You currently have {notes.current_stamina} Trailblaze Power out of {notes.max_stamina}", icon=icon)
                         trailblaze_notification_send = True
                     elif notes.current_stamina >= notes.max_stamina:
                         print(f"{strftime('%H:%M:%S', localtime())} | Your Trailblaze Power isn't just FULL")
@@ -82,7 +100,7 @@ async def trailblaze():
                             engine.say("Your Trailblaze Power isn't just FULL")
                             engine.runAndWait()
                         trailblaze_last_count = notes.current_stamina
-                        await to_thread(toaster.show_toast, "Your Trailblaze Power isn't just FULL", f"You currently have {notes.current_stamina} Trailblaze Power out of {notes.max_stamina}", "ico/Trailblaze.ico", 15)
+                        await toast_async("Your Trailblaze Power isn't just FULL", f"You currently have {notes.current_stamina} Trailblaze Power out of {notes.max_stamina}", icon=icon)
                         trailblaze_notification_send = True   
         else:
             if trailblaze_notification_send == False:
@@ -92,7 +110,7 @@ async def trailblaze():
                         engine.say("Your Trailblaze Power is FULL")
                         engine.runAndWait()
                     trailblaze_last_count = notes.current_stamina
-                    await to_thread(toaster.show_toast, "Your Trailblaze Power is FULL", f"You currently have {notes.current_stamina} Trailblaze Power out of {notes.max_stamina}", "ico/Trailblaze.ico", 15)
+                    await toast_async("Your Trailblaze Power is FULL", f"You currently have {notes.current_stamina} Trailblaze Power out of {notes.max_stamina}", icon=icon)
                     trailblaze_notification_send = True
                 elif notes.current_stamina >= notes.max_stamina:
                     print(f"{strftime('%H:%M:%S', localtime())} | Your Trailblaze Power isn't just FULL")
@@ -100,7 +118,7 @@ async def trailblaze():
                         engine.say("Your Trailblaze Power isn't just FULL")
                         engine.runAndWait()
                     trailblaze_last_count = notes.current_stamina
-                    await to_thread(toaster.show_toast, "Your Trailblaze Power isn't just FULL", f"You currently have {notes.current_stamina} Trailblaze Power out of {notes.max_stamina}", "ico/Trailblaze.ico", 15)
+                    await toast_async("Your Trailblaze Power isn't just FULL", f"You currently have {notes.current_stamina} Trailblaze Power out of {notes.max_stamina}", icon=icon)
                     trailblaze_notification_send = True
 
         await asyncio.sleep(480)
@@ -108,6 +126,10 @@ async def trailblaze():
 async def assignments():
     assignments_notification_send = False
     assignments_last_count = 0
+    icon = {
+        'src': f'file://{HSRn_path}/ico/Assignment.ico',
+        'placement': 'appLogoOverride'
+    }
     while(True):
         ac = await hsr.get_game_accounts()
         for account in ac:
@@ -130,7 +152,7 @@ async def assignments():
                     engine.say("All your assignments have completed")
                     engine.runAndWait()
                 assignments_last_count = finished
-                await to_thread(toaster.show_toast, "All your assignments have completed", f"{assignments_last_count} assignments have completed out of {notes.total_expedition_num}", "ico/Assignment.ico", 15)
+                await toast_async("All your assignments have completed", f"{assignments_last_count} assignments have completed out of {notes.total_expedition_num}", icon=icon)
                 assignments_notification_send = True
             elif finished > assignments_last_count:
                 print(f"{strftime('%H:%M:%S', localtime())} | Some of your assignments have completed")
@@ -138,7 +160,7 @@ async def assignments():
                     engine.say("Some of your assignments have completed")
                     engine.runAndWait()
                 assignments_last_count = finished
-                await to_thread(toaster.show_toast, "Some of your assignments have completed", f"{assignments_last_count} assignments have completed out of {notes.total_expedition_num}", "ico/Assignment.ico", 15)
+                await toast_async("Some of your assignments have completed", f"{assignments_last_count} assignments have completed out of {notes.total_expedition_num}", icon=icon)
                 assignments_notification_send = True
 
         await asyncio.sleep(600)
@@ -146,6 +168,10 @@ async def assignments():
 async def daily():
     daily_last_day = -1
     timezone = pytz.timezone('Etc/GMT-8')
+    icon = {
+        'src': f'file://{HSRn_path}/ico/Daily.ico',
+        'placement': 'appLogoOverride'
+    }
     while (True):
         day = datetime.datetime.now(timezone).strftime('%d')
 
@@ -161,24 +187,28 @@ async def daily():
                     engine.runAndWait()
                 daily_last_day = day
                 if os.getenv('daily_not') == 'True':
-                    await to_thread(toaster.show_toast, "Collected your daily check-in reward", f"Claimed daily reward - {reward.amount}x {reward.name}", "ico/Daily.ico", 15)
+                    await toast_async("Collected your daily check-in reward", f"Claimed daily reward - {reward.amount}x {reward.name}", icon=icon)
 
         await asyncio.sleep(900)
 
 async def shop():
     timezones = {"eu": "Etc/GMT-1", "as": "Etc/GMT-8", "us": "Etc/GMT+5"}
     last_day = -1
+    icon = {
+        'src': f'file://{HSRn_path}/ico/Shop.ico',
+        'placement': 'appLogoOverride'
+    }
     while(True):
-        day = datetime.datetime.now(pytz.timezone(timezones[os.getenv("server")])).strftime('%d')
+        day = int(datetime.datetime.now(pytz.timezone(timezones[os.getenv("server")])).strftime('%d'))
 
         if last_day != day:
             last_day = day
-            if day == "01":
+            if day == 1:
                 print(f"{strftime('%H:%M:%S', localtime())} | Shop has been reset today")
                 if os.getenv('tts') == 'True':
                     engine.say("Shop has been reset today")
                     engine.runAndWait()
-                await to_thread(toaster.show_toast, "Shop reset", f"Shop has been reset today", "ico/Shop.ico", 60)
+                await toast_async("Shop reset", f"Shop has been reset today", icon=icon)
 
         await asyncio.sleep(900)
 
@@ -186,6 +216,10 @@ hall_reset = False
 
 async def hall():
     global hall_reset
+    icon = {
+        'src': f'file://{HSRn_path}/ico/Hall.ico',
+        'placement': 'appLogoOverride'
+    }
     while(True):    
         ac = await hsr.get_game_accounts()
         for account in ac:
@@ -208,7 +242,7 @@ async def hall():
             if os.getenv('tts') == 'True':
                 engine.say("Forgotten Hall has been reset")
                 engine.runAndWait()
-            await to_thread(toaster.show_toast, "Forgotten Hall reset", f"Forgotten Hall has been reset", "ico/Hall.ico", 60)
+            await toast_async("Forgotten Hall reset", f"Forgotten Hall has been reset", icon=icon)
 
         await asyncio.sleep(900)
 
@@ -216,6 +250,10 @@ pf_reset = False
 
 async def pf():
     global pf_reset
+    icon = {
+        'src': f'file://{HSRn_path}/ico/pf.ico',
+        'placement': 'appLogoOverride'
+    }
     while(True):    
         ac = await hsr.get_game_accounts()
         for account in ac:
@@ -238,7 +276,7 @@ async def pf():
             if os.getenv('tts') == 'True':
                 engine.say("Pure Fiction has been reset")
                 engine.runAndWait()
-            await to_thread(toaster.show_toast, "Pure Fiction reset", f"Pure Fiction has been reset", "ico/pf.ico", 60)
+            await toast_async("Pure Fiction reset", f"Pure Fiction has been reset", icon=icon)
 
         await asyncio.sleep(900)
 
@@ -246,6 +284,10 @@ apocalyptic_reset = False
 
 async def apocalyptic():
     global apocalyptic_reset
+    icon = {
+        'src': f'file://{HSRn_path}/ico/Apocalyptic.ico',
+        'placement': 'appLogoOverride'
+    }
     while(True):    
         ac = await hsr.get_game_accounts()
         for account in ac:
@@ -268,7 +310,7 @@ async def apocalyptic():
             if os.getenv('tts') == 'True':
                 engine.say("Apocalyptic Shadow has been reset")
                 engine.runAndWait()
-            await to_thread(toaster.show_toast, "Apocalyptic Shadow reset", f"Apocalyptic Shadow has been reset", "ico/Apocalyptic.ico", 60)
+            await toast_async("Apocalyptic Shadow reset", f"Apocalyptic Shadow has been reset", icon=icon)
 
         await asyncio.sleep(900)
 
@@ -277,6 +319,22 @@ async def reminder():
     global hall_reset
     global pf_reset
     global apocalyptic_reset
+    icon_s = {
+        'src': f'file://{HSRn_path}/ico/Shop.ico',
+        'placement': 'appLogoOverride'
+    }
+    icon_h = {
+        'src': f'file://{HSRn_path}/ico/Hall.ico',
+        'placement': 'appLogoOverride'
+    }
+    icon_pf = {
+        'src': f'file://{HSRn_path}/ico/pf.ico',
+        'placement': 'appLogoOverride'
+    }
+    icon_a = {
+        'src': f'file://{HSRn_path}/ico/Apocalyptic.ico',
+        'placement': 'appLogoOverride'
+    }
     while (True):
         name = "starrail.exe" # "notepad++.exe"
         if name in (p.name().lower() for p in psutil.process_iter()):
@@ -287,14 +345,14 @@ async def reminder():
                     await asyncio.sleep(int(os.getenv("reminder_additional_delay")))
 
                 timezones = {"eu": "Etc/GMT-1", "as": "Etc/GMT-8", "us": "Etc/GMT+5"}
-                day = datetime.datetime.now(pytz.timezone(timezones[os.getenv("server")])).strftime('%d')
+                day = int(datetime.datetime.now(pytz.timezone(timezones[os.getenv("server")])).strftime('%d'))
                 if os.getenv("reminder_shop") == "True":
-                    if day == "01":
+                    if day == 1:
                         print(f"REMINDER {strftime('%H:%M:%S', localtime())} | Shop has been reset today")
                         if os.getenv('tts') == 'True':
                             engine.say("REMINDER Shop has been reset today")
                             engine.runAndWait()
-                        await to_thread(toaster.show_toast, "Shop reset", f"Shop has been reset today", "ico/Shop.ico", 5)
+                        await toast_async("Shop reset", f"Shop has been reset today", icon=icon_s)
 
                 if os.getenv("reminder_hall") == "True":
                     if hall_reset:
@@ -302,7 +360,7 @@ async def reminder():
                         if os.getenv('tts') == 'True':
                             engine.say("REMINDER Forgotten Hall has been reset")
                             engine.runAndWait()
-                        await to_thread(toaster.show_toast, "Forgotten Hall reset", f"Forgotten Hall has been reset", "ico/Hall.ico", 5)
+                        await toast_async("Forgotten Hall reset", f"Forgotten Hall has been reset", icon=icon_h)
 
                 if os.getenv("reminder_pf") == "True":
                     if pf_reset:
@@ -310,7 +368,7 @@ async def reminder():
                         if os.getenv('tts') == 'True':
                             engine.say("REMINDER Pure Fiction has been reset")
                             engine.runAndWait()
-                        await to_thread(toaster.show_toast, "Pure Fiction reset", f"Pure Fiction has been reset", "ico/pf.ico", 5)
+                        await toast_async("Pure Fiction reset", f"Pure Fiction has been reset", icon=icon_pf)
 
                 if os.getenv("reminder_apocalyptic") == "True":
                     if apocalyptic_reset:
@@ -318,7 +376,7 @@ async def reminder():
                         if os.getenv('tts') == 'True':
                             engine.say("REMINDER Apocalyptic Shadow has been reset")
                             engine.runAndWait()
-                        await to_thread(toaster.show_toast, "Apocalyptic Shadow reset", f"Apocalyptic Shadow has been reset", "ico/Apocalyptic.ico", 5)
+                        await toast_async("Apocalyptic Shadow reset", f"Apocalyptic Shadow has been reset", icon=icon_a)
         else:
             if game_on == True:
                 game_on = False
@@ -353,5 +411,4 @@ if __name__ == "__main__":
         task8 = asyncio.ensure_future(reminder())
         print('Reminder turned on')
     print("-----------------------------------")
-    toaster.notification_active()
     loop.run_forever()

@@ -49,6 +49,13 @@ python notifications.py
 
 ## Changelog
 
+### 17.10.2024
+
+**After this update you must reinstall requirements.txt! Or install win11toast using: pip install win11toast**
+- Rewrote an entire project to use `win11toast` instead of `win10toast`
+- Added `trailblaze_milestones_margin`, more information in `settings.env`
+- Changed all `.ico` files in `/ico` to have the same width and height
+
 ### 24.09.2024
 
 - Fixed Forgotten Hall reset reminder being sent even though it wasn't
