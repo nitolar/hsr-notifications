@@ -8,6 +8,7 @@ dotenv.load_dotenv(dotenv_path=f"{HSRn_path}/settings.env")
 hsr = genshin.Client()
 engine = pyttsx3.init()
 os.system("") # To make colors in errors always work
+timezones = {"eu": "Etc/GMT-1", "as": "Etc/GMT-8", "us": "Etc/GMT+5"}
 
 if os.path.exists("cache.json"):
     pass
@@ -192,7 +193,6 @@ async def daily():
         await asyncio.sleep(900)
 
 async def shop():
-    timezones = {"eu": "Etc/GMT-1", "as": "Etc/GMT-8", "us": "Etc/GMT+5"}
     last_day = -1
     icon = {
         'src': f'file://{HSRn_path}/ico/Shop.ico',
@@ -215,102 +215,153 @@ async def shop():
 hall_reset = False
 
 async def hall():
+    last_day = -1
+    started_between_0_3 = False
     global hall_reset
     icon = {
         'src': f'file://{HSRn_path}/ico/Hall.ico',
         'placement': 'appLogoOverride'
     }
     while(True):    
-        ac = await hsr.get_game_accounts()
-        for account in ac:
-            if "hkrpg" in account.game_biz:
-                uid = account.uid
-        hall = await hsr.get_starrail_challenge(uid=uid)
+        day = int(datetime.datetime.now(pytz.timezone(timezones[os.getenv("server")])).strftime('%d')) 
+        hour = int(datetime.datetime.now(pytz.timezone(timezones[os.getenv("server")])).strftime('%H'))
+        exe = True if hour >= 4 else False
+        if (last_day != day and exe) or (not exe and not started_between_0_3 and day != last_day + 1):
+            started_between_0_3 = not started_between_0_3
+            last_day = day 
 
-        with open("cache.json", "r", encoding='utf-8') as cache_f:
-            cache = json.load(cache_f)
-            season = cache['hall_season']
-            cache_f.close()
+            ac = await hsr.get_game_accounts()
+            for account in ac:
+                if "hkrpg" in account.game_biz:
+                    uid = account.uid
+            try:
+                hall = await hsr.get_starrail_challenge(uid=uid)
+            except genshin.GeetestError as ex:
+                    print(f"\33[31mERROR | Captcha triggered while fetching Forgotten Hall data. Go to your Battle Chronicle and complete a captcha for the script to be able to notify you when Forgotten Hall resets!\033[0m")
+                    if os.getenv('tts') == 'True':
+                        engine.say("Forgotten Hall reset data can't be collected! More information about the error is available in the console.")
+                        engine.runAndWait()
+                    await toast_async("Forgotten Hall Error", f"Forgotten Hall reset data can't be collected!\nMore information about the error is available in the console.", icon=icon)
+                    return
 
-        if season != hall.seasons[0].id:
-            with open("cache.json", "w", encoding='utf-8') as cache_f:
-                hall_reset = True
-                cache['hall_season'] = hall.seasons[0].id
-                json.dump(cache, cache_f, indent=4)
+            with open("cache.json", "r", encoding='utf-8') as cache_f:
+                cache = json.load(cache_f)
+                season = cache['hall_season']
                 cache_f.close()
-            print(f"{strftime('%H:%M:%S', localtime())} | Forgotten Hall has been reset")
-            if os.getenv('tts') == 'True':
-                engine.say("Forgotten Hall has been reset")
-                engine.runAndWait()
-            await toast_async("Forgotten Hall reset", f"Forgotten Hall has been reset", icon=icon)
+
+            if season != hall.seasons[0].id:
+                with open("cache.json", "w", encoding='utf-8') as cache_f:
+                    hall_reset = True
+                    cache['hall_season'] = hall.seasons[0].id
+                    json.dump(cache, cache_f, indent=4)
+                    cache_f.close()
+                print(f"{strftime('%H:%M:%S', localtime())} | Forgotten Hall has been reset")
+                if os.getenv('tts') == 'True':
+                    engine.say("Forgotten Hall has been reset")
+                    engine.runAndWait()
+                await toast_async("Forgotten Hall reset", f"Forgotten Hall has been reset", icon=icon)
 
         await asyncio.sleep(900)
 
 pf_reset = False
 
 async def pf():
+    last_day = -1
+    started_between_0_3 = False
     global pf_reset
     icon = {
         'src': f'file://{HSRn_path}/ico/pf.ico',
         'placement': 'appLogoOverride'
     }
     while(True):    
-        ac = await hsr.get_game_accounts()
-        for account in ac:
-            if "hkrpg" in account.game_biz:
-                uid = account.uid
-        pf = await hsr.get_starrail_pure_fiction(uid=uid)
+        day = int(datetime.datetime.now(pytz.timezone(timezones[os.getenv("server")])).strftime('%d')) 
+        hour = int(datetime.datetime.now(pytz.timezone(timezones[os.getenv("server")])).strftime('%H'))
+        exe = True if hour >= 4 else False
+        if (last_day != day and exe) or (not exe and not started_between_0_3 and day != last_day + 1):
+            started_between_0_3 = not started_between_0_3
+            last_day = day 
 
-        with open("cache.json", "r", encoding='utf-8') as cache_f:
-            cache = json.load(cache_f)
-            season = cache['pf_season']
-            cache_f.close()
+            ac = await hsr.get_game_accounts()
+            for account in ac:
+                if "hkrpg" in account.game_biz:
+                    uid = account.uid
+            try:
+                pf = await hsr.get_starrail_pure_fiction(uid=uid)
+            except genshin.GeetestError as ex:
+                print(f"\33[31mERROR | Captcha triggered while fetching Pure Fiction data. Go to your Battle Chronicle and complete a captcha for the script to be able to notify you when Pure Fiction resets!\033[0m")
+                if os.getenv('tts') == 'True':
+                    engine.say("Pure Fiction reset data can't be collected! More information about the error is available in the console.")
+                    engine.runAndWait()
+                await toast_async("Pure Fiction Error", f"Pure Fiction reset data can't be collected!\nMore information about the error is available in the console.", icon=icon)
+                return
 
-        if season != pf.seasons[0].id:
-            with open("cache.json", "w", encoding='utf-8') as cache_f:
-                pf_reset = True
-                cache['pf_season'] = pf.seasons[0].id
-                json.dump(cache, cache_f, indent=4)
+            with open("cache.json", "r", encoding='utf-8') as cache_f:
+                cache = json.load(cache_f)
+                season = cache['pf_season']
                 cache_f.close()
-            print(f"{strftime('%H:%M:%S', localtime())} | Pure Fiction has been reset")
-            if os.getenv('tts') == 'True':
-                engine.say("Pure Fiction has been reset")
-                engine.runAndWait()
-            await toast_async("Pure Fiction reset", f"Pure Fiction has been reset", icon=icon)
+
+            if season != pf.seasons[0].id:
+                with open("cache.json", "w", encoding='utf-8') as cache_f:
+                    pf_reset = True
+                    cache['pf_season'] = pf.seasons[0].id
+                    json.dump(cache, cache_f, indent=4)
+                    cache_f.close()
+                print(f"{strftime('%H:%M:%S', localtime())} | Pure Fiction has been reset")
+                if os.getenv('tts') == 'True':
+                    engine.say("Pure Fiction has been reset")
+                    engine.runAndWait()
+                await toast_async("Pure Fiction reset", f"Pure Fiction has been reset", icon=icon)
 
         await asyncio.sleep(900)
 
 apocalyptic_reset = False
 
 async def apocalyptic():
+    last_day = -1
+    started_between_0_3 = False
     global apocalyptic_reset
     icon = {
         'src': f'file://{HSRn_path}/ico/Apocalyptic.ico',
         'placement': 'appLogoOverride'
     }
     while(True):    
-        ac = await hsr.get_game_accounts()
-        for account in ac:
-            if "hkrpg" in account.game_biz:
-                uid = account.uid
-        apocalyptic = await hsr.get_starrail_apc_shadow(uid=uid)
+        day = int(datetime.datetime.now(pytz.timezone(timezones[os.getenv("server")])).strftime('%d')) 
+        hour = int(datetime.datetime.now(pytz.timezone(timezones[os.getenv("server")])).strftime('%H'))
+        exe = True if hour >= 4 else False
+        if (last_day != day and exe) or (not exe and not started_between_0_3 and day != last_day + 1):
+            started_between_0_3 = not started_between_0_3
+            last_day = day 
 
-        with open("cache.json", "r", encoding='utf-8') as cache_f:
-            cache = json.load(cache_f)
-            season = cache['apocalyptic_season']
-            cache_f.close()
+            ac = await hsr.get_game_accounts()
+            for account in ac:
+                if "hkrpg" in account.game_biz:
+                    uid = account.uid
+            try:
+                apocalyptic = await hsr.get_starrail_apc_shadow(uid=uid)
+            except genshin.GeetestError as ex:
+                print(f"\33[31mERROR | Captcha triggered while fetching Apocalyptic Shadow data. Go to your Battle Chronicle and complete a captcha for the script to be able to notify you when Apocalyptic Shadow resets!\033[0m")
+                if os.getenv('tts') == 'True':
+                    engine.say("Apocalyptic Shadow reset data can't be collected! More information about the error is available in the console.")
+                    engine.runAndWait()
+                await toast_async("Apocalyptic Shadow Error", f"Apocalyptic Shadow reset data can't be collected!\nMore information about the error is available in the console.", icon=icon)
+                return
 
-        if season != apocalyptic.seasons[0].id:
-            with open("cache.json", "w", encoding='utf-8') as cache_f:
-                apocalyptic_reset = True
-                cache['apocalyptic_season'] = apocalyptic.seasons[0].id
-                json.dump(cache, cache_f, indent=4)
+            with open("cache.json", "r", encoding='utf-8') as cache_f:
+                cache = json.load(cache_f)
+                season = cache['apocalyptic_season']
                 cache_f.close()
-            print(f"{strftime('%H:%M:%S', localtime())} | Apocalyptic Shadow has been reset")
-            if os.getenv('tts') == 'True':
-                engine.say("Apocalyptic Shadow has been reset")
-                engine.runAndWait()
-            await toast_async("Apocalyptic Shadow reset", f"Apocalyptic Shadow has been reset", icon=icon)
+
+            if season != apocalyptic.seasons[0].id:
+                with open("cache.json", "w", encoding='utf-8') as cache_f:
+                    apocalyptic_reset = True
+                    cache['apocalyptic_season'] = apocalyptic.seasons[0].id
+                    json.dump(cache, cache_f, indent=4)
+                    cache_f.close()
+                print(f"{strftime('%H:%M:%S', localtime())} | Apocalyptic Shadow has been reset")
+                if os.getenv('tts') == 'True':
+                    engine.say("Apocalyptic Shadow has been reset")
+                    engine.runAndWait()
+                await toast_async("Apocalyptic Shadow reset", f"Apocalyptic Shadow has been reset", icon=icon)
 
         await asyncio.sleep(900)
 
@@ -344,7 +395,6 @@ async def reminder():
                 if (int(os.getenv("reminder_additional_delay")) != 0):
                     await asyncio.sleep(int(os.getenv("reminder_additional_delay")))
 
-                timezones = {"eu": "Etc/GMT-1", "as": "Etc/GMT-8", "us": "Etc/GMT+5"}
                 day = int(datetime.datetime.now(pytz.timezone(timezones[os.getenv("server")])).strftime('%d'))
                 if os.getenv("reminder_shop") == "True":
                     if day == 1:
