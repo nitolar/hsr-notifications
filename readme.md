@@ -10,6 +10,7 @@ Also automatically collects your daily check-in!
 
 [Check out Genshin Impact version](https://github.com/nitolar/genshin-notifications)
 
+[Check out Zenless Zone Zero version](https://github.com/nitolar/zzz-notifications)
 
 ## Preview
 
