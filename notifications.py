@@ -1,5 +1,5 @@
 import dotenv, os, pyttsx3, pytz, datetime, genshin, asyncio, json, contextvars, functools, psutil
-from win11toast import toast_async
+from win11toast import toast_async, clear_toast
 from time import localtime, strftime
 
 HSRn_path = os.path.dirname(os.path.realpath(__file__))
@@ -11,13 +11,27 @@ os.system("") # To make colors in errors always work
 timezones = {"eu": "Etc/GMT-1", "as": "Etc/GMT-8", "us": "Etc/GMT+5"}
 
 if os.path.exists("cache.json"):
-    pass
+    with open("cache.json", "r", encoding='utf-8') as cache_f:
+        data = json.load(cache_f)
+        if 'hall_season' not in data:
+            data['hall_season'] = 0
+        if 'pf_season' not in data:
+            data['pf_season'] = 0
+        if 'apocalyptic_season' not in data:
+            data['apocalyptic_season'] = 0
+        if 'anomaly_season' not in data:
+            data['anomaly_season'] = 0
+        cache_f.close()
+    with open("cache.json", "w", encoding='utf-8') as cache_f:
+        json.dump(data, cache_f, indent=4)
+        cache_f.close()
 else: 
     with open("cache.json", "w", encoding='utf-8') as cache_f:
         data = {
             'hall_season': 0,
             'pf_season': 0,
-            'apocalyptic_season': 0
+            'apocalyptic_season': 0,
+            'anomaly_season': 0
         }
         json.dump(data, cache_f, indent=4)
 
@@ -28,7 +42,10 @@ elif os.getenv('set_cookies_method') == 'login':
         print("\33[31mIncorrect ltuid or ltoken empty!\033[0m")
         exit()
     else:
-        hsr.set_cookies(ltuid=int(os.getenv('ltuid')), ltoken=os.getenv('ltoken'))
+        if os.getenv('v2') == 'True':
+            hsr.set_cookies(ltuid_v2=int(os.getenv('ltuid')), ltoken_v2=os.getenv('ltoken'))
+        else:
+            hsr.set_cookies(ltuid=int(os.getenv('ltuid')), ltoken=os.getenv('ltoken'))
 else:
     print("\33[31mIncorrect value for \"set_cookies_method\"! \n\33[93mSet it to: \"login\" or \"auto\"\033[0m")
     exit()
@@ -365,11 +382,63 @@ async def apocalyptic():
 
         await asyncio.sleep(900)
 
+anomaly_reset = False
+
+async def anomaly():
+    last_day = -1
+    started_between_0_3 = False
+    global anomaly_reset
+    icon = {
+        'src': f'file://{HSRn_path}/ico/Anomaly.ico',
+        'placement': 'appLogoOverride'
+    }
+    while(True):    
+        day = int(datetime.datetime.now(pytz.timezone(timezones[os.getenv("server")])).strftime('%d')) 
+        hour = int(datetime.datetime.now(pytz.timezone(timezones[os.getenv("server")])).strftime('%H'))
+        exe = True if hour >= 4 else False
+        if (last_day != day and exe) or (not exe and not started_between_0_3 and day != last_day + 1):
+            started_between_0_3 = not started_between_0_3
+            last_day = day 
+
+            ac = await hsr.get_game_accounts()
+            for account in ac:
+                if "hkrpg" in account.game_biz:
+                    uid = account.uid
+            try:
+                anomaly = await hsr.get_anomaly_arbitration(uid=uid)
+            except genshin.GeetestError as ex:
+                print(f"\33[31mERROR | Captcha triggered while fetching Anomaly Arbitration data. Go to your Battle Chronicle and complete a captcha for the script to be able to notify you when Anomaly Arbitration resets!\033[0m")
+                if os.getenv('tts') == 'True':
+                    engine.say("Anomaly Arbitration reset data can't be collected! More information about the error is available in the console.")
+                    engine.runAndWait()
+                await toast_async("Anomaly Arbitration Error", f"Anomaly Arbitration reset data can't be collected!\nMore information about the error is available in the console.", icon=icon)
+                return
+
+            with open("cache.json", "r", encoding='utf-8') as cache_f:
+                cache = json.load(cache_f)
+                season = cache['anomaly_season']
+                cache_f.close()
+
+            if season != anomaly.records[0].season.id:
+                with open("cache.json", "w", encoding='utf-8') as cache_f:
+                    anomaly_reset = True
+                    cache['anomaly_season'] = anomaly.records[0].season.id
+                    json.dump(cache, cache_f, indent=4)
+                    cache_f.close()
+                print(f"{strftime('%H:%M:%S', localtime())} | Anomaly Arbitration has been reset")
+                if os.getenv('tts') == 'True':
+                    engine.say("Anomaly Arbitration has been reset")
+                    engine.runAndWait()
+                await toast_async("Anomaly Arbitration reset", f"Anomaly Arbitration has been reset", icon=icon)
+
+        await asyncio.sleep(900)
+
 async def reminder():
     game_on = False
     global hall_reset
     global pf_reset
     global apocalyptic_reset
+    global anomaly_reset
     icon_s = {
         'src': f'file://{HSRn_path}/ico/Shop.ico',
         'placement': 'appLogoOverride'
@@ -384,6 +453,10 @@ async def reminder():
     }
     icon_a = {
         'src': f'file://{HSRn_path}/ico/Apocalyptic.ico',
+        'placement': 'appLogoOverride'
+    }
+    icon_an = {
+        'src': f'file://{HSRn_path}/ico/Anomaly.ico',
         'placement': 'appLogoOverride'
     }
     while (True):
@@ -427,6 +500,14 @@ async def reminder():
                             engine.say("REMINDER Apocalyptic Shadow has been reset")
                             engine.runAndWait()
                         await toast_async("Apocalyptic Shadow reset", f"Apocalyptic Shadow has been reset", icon=icon_a)
+
+                if os.getenv("reminder_anomaly") == "True":
+                    if anomaly_reset:
+                        print(f"REMINDER {strftime('%H:%M:%S', localtime())} | Anomaly Arbitration has been reset")
+                        if os.getenv('tts') == 'True':
+                            engine.say("REMINDER Anomaly Arbitration has been reset")
+                            engine.runAndWait()
+                        await toast_async("Anomaly Arbitration reset", f"Anomaly Arbitration has been reset", icon=icon_an)
         else:
             if game_on == True:
                 game_on = False
@@ -434,6 +515,7 @@ async def reminder():
         await asyncio.sleep(int(os.getenv("reminder_time")))
 
 if __name__ == "__main__":
+    clear_toast(app_id="HSR Notifications")
     loop = asyncio.get_event_loop()
     print("-----------------------------------")
     if (os.getenv('trailblaze_not')) == 'True':
@@ -457,8 +539,11 @@ if __name__ == "__main__":
     if (os.getenv('apocalyptic_not')) == 'True':
         task7 = asyncio.ensure_future(apocalyptic())
         print("Apocalyptic Shadow reset turned on")
+    if (os.getenv('anomaly_not')) == 'True':
+        task8 = asyncio.ensure_future(anomaly())
+        print("Anomaly Arbitration reset turned on")
     if (os.getenv('reminder')) == 'True':
-        task8 = asyncio.ensure_future(reminder())
+        task9 = asyncio.ensure_future(reminder())
         print('Reminder turned on')
     print("-----------------------------------")
     loop.run_forever()

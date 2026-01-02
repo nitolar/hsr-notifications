@@ -50,6 +50,12 @@ python notifications.py
 
 ## Changelog
 
+### 02.01.2026
+
+- Added Anomaly Arbitration reset notification
+- Added support for v2 cookies
+- Added auto clearing of old notifications on start up to stop them from piling up in notification center
+
 ### 23.11.2024
 
 - Added detection of the `GeetestError` error when checking if Forgotten Hall/Pure Fiction/Apocalyptic Shadow reset, and added a notification when it happens  
